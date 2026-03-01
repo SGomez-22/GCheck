@@ -1,152 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Checklist App</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
+<meta charset="UTF-8">
+<title>Checklist Board</title>
 
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      width: 350px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+  padding: 20px;
+}
 
-    h2 {
-      text-align: center;
-    }
+/* LOGIN SCREEN */
+#loginScreen {
+  text-align: center;
+  margin-top: 100px;
+}
 
-    .input-group {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
+#app {
+  display: none;
+}
 
-    input {
-      flex: 1;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
+h1 {
+  text-align: center;
+  cursor: pointer;
+}
 
-    button {
-      padding: 8px 12px;
-      border: none;
-      background: #4CAF50;
-      color: white;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+#board {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+}
 
-    button:hover {
-      background: #45a049;
-    }
+.column {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  width: 250px;
+  min-height: 200px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
 
-    ul {
-      list-style: none;
-      padding: 0;
-    }
+.column h3 {
+  text-align: center;
+}
 
-    li {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-    }
+.task {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+  padding: 5px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+  cursor: grab;
+}
 
-    li.completed span {
-      text-decoration: line-through;
-      color: gray;
-    }
+.task.completed span {
+  text-decoration: line-through;
+  color: gray;
+}
 
-    .delete {
-      background: red;
-      padding: 5px 8px;
-      border-radius: 5px;
-    }
+button {
+  border: none;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
 
-    .delete:hover {
-      background: darkred;
-    }
-  </style>
+.add-btn {
+  background: #4CAF50;
+  color: white;
+  margin-top: 5px;
+}
+
+.delete-btn {
+  background: red;
+  color: white;
+}
+
+input {
+  padding: 5px;
+  margin: 5px;
+}
+</style>
+
 </head>
 <body>
 
-<div class="container">
-  <h2>My Checklist</h2>
+<!-- LOGIN -->
+<div id="loginScreen">
+  <h2>Login</h2>
+  <input id="usernameInput" placeholder="Enter username">
+  <button onclick="login()">Enter</button>
+</div>
 
-  <div class="input-group">
-    <input type="text" id="taskInput" placeholder="Add a task...">
-    <button onclick="addTask()">Add</button>
-  </div>
+<!-- APP -->
+<div id="app">
 
-  <ul id="taskList"></ul>
+<h1 contenteditable="true" id="title">My Checklist</h1>
+
+<div style="text-align:center;">
+  <input id="columnInput" placeholder="New column name">
+  <button onclick="addColumn()">Add Column</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div id="board"></div>
+
 </div>
 
 <script>
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let currentUser = localStorage.getItem("currentUser");
 
-  function saveTasks() {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }
+function getUserKey(key) {
+  return currentUser + "_" + key;
+}
 
-  function renderTasks() {
-    const list = document.getElementById("taskList");
-    list.innerHTML = "";
+function login() {
+  const username = document.getElementById("usernameInput").value;
+  if (!username) return;
 
-    tasks.forEach((task, index) => {
-      const li = document.createElement("li");
-      li.className = task.completed ? "completed" : "";
+  localStorage.setItem("currentUser", username);
+  location.reload();
+}
 
-      const span = document.createElement("span");
-      span.textContent = task.text;
-      span.onclick = () => toggleTask(index);
+function logout() {
+  localStorage.removeItem("currentUser");
+  location.reload();
+}
 
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "X";
-      delBtn.className = "delete";
-      delBtn.onclick = () => deleteTask(index);
+if (currentUser) {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+} else {
+  document.getElementById("loginScreen").style.display = "block";
+}
 
-      li.appendChild(span);
-      li.appendChild(delBtn);
-      list.appendChild(li);
+/* DATA */
+let boardData = JSON.parse(localStorage.getItem(getUserKey("boardData"))) || [];
+
+function save() {
+  localStorage.setItem(getUserKey("boardData"), JSON.stringify(boardData));
+}
+
+/* TITLE */
+const savedTitle = localStorage.getItem(getUserKey("title"));
+if (savedTitle) {
+  document.getElementById("title").textContent = savedTitle;
+}
+
+document.getElementById("title").addEventListener("input", function () {
+  localStorage.setItem(getUserKey("title"), this.textContent);
+});
+
+/* RENDER */
+function render() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+
+  boardData.forEach((col, colIndex) => {
+    const div = document.createElement("div");
+    div.className = "column";
+    div.dataset.index = colIndex;
+
+    div.ondragover = (e) => e.preventDefault();
+    div.ondrop = (e) => dropTask(e, colIndex);
+
+    div.innerHTML = `
+      <h3>${col.name}</h3>
+      <input placeholder="New task..." onkeypress="handleKey(event, ${colIndex})">
+      <button class="add-btn" onclick="addTask(${colIndex})">Add</button>
+      <div id="tasks-${colIndex}"></div>
+    `;
+
+    const taskContainer = div.querySelector(`#tasks-${colIndex}`);
+
+    col.tasks.forEach((task, taskIndex) => {
+      const taskDiv = document.createElement("div");
+      taskDiv.className = "task " + (task.completed ? "completed" : "");
+      taskDiv.draggable = true;
+
+      taskDiv.ondragstart = (e) => {
+        e.dataTransfer.setData("text/plain", JSON.stringify({
+          colIndex,
+          taskIndex
+        }));
+      };
+
+      taskDiv.innerHTML = `
+        <span onclick="toggleTask(${colIndex}, ${taskIndex})">${task.text}</span>
+        <button class="delete-btn" onclick="deleteTask(${colIndex}, ${taskIndex})">X</button>
+      `;
+
+      taskContainer.appendChild(taskDiv);
     });
-  }
 
-  function addTask() {
-    const input = document.getElementById("taskInput");
-    if (input.value.trim() === "") return;
+    board.appendChild(div);
+  });
+}
 
-    tasks.push({ text: input.value, completed: false });
-    input.value = "";
-    saveTasks();
-    renderTasks();
-  }
+/* DRAG DROP */
+function dropTask(e, newColIndex) {
+  const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+  const task = boardData[data.colIndex].tasks[data.taskIndex];
 
-  function toggleTask(index) {
-    tasks[index].completed = !tasks[index].completed;
-    saveTasks();
-    renderTasks();
-  }
+  boardData[data.colIndex].tasks.splice(data.taskIndex, 1);
+  boardData[newColIndex].tasks.push(task);
 
-  function deleteTask(index) {
-    tasks.splice(index, 1);
-    saveTasks();
-    renderTasks();
-  }
+  save();
+  render();
+}
 
-  renderTasks();
+/* TASK FUNCTIONS */
+function addColumn() {
+  const input = document.getElementById("columnInput");
+  if (!input.value.trim()) return;
+
+  boardData.push({ name: input.value, tasks: [] });
+  input.value = "";
+
+  save();
+  render();
+}
+
+function addTask(colIndex) {
+  const column = document.querySelectorAll(".column")[colIndex];
+  const input = column.querySelector("input");
+
+  if (!input.value.trim()) return;
+
+  boardData[colIndex].tasks.push({
+    text: input.value,
+    completed: false
+  });
+
+  input.value = "";
+  save();
+  render();
+}
+
+function toggleTask(colIndex, taskIndex) {
+  boardData[colIndex].tasks[taskIndex].completed =
+    !boardData[colIndex].tasks[taskIndex].completed;
+
+  save();
+  render();
+}
+
+function deleteTask(colIndex, taskIndex) {
+  boardData[colIndex].tasks.splice(taskIndex, 1);
+  save();
+  render();
+}
+
+function handleKey(e, colIndex) {
+  if (e.key === "Enter") addTask(colIndex);
+}
+
+render();
 </script>
 
 </body>
